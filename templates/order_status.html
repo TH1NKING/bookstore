@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}订单详情{% endblock %}
+{% block content %}
+<h2>订单 #{{ order.id }} 详情</h2>
+<p>订单状态：<strong>{{ order.status }}</strong></p>
+<p>下单时间：{{ order.created_at }}</p>
+<p>收货地址：{{ order.shipping_address }}</p>
+<p>联系电话：{{ order.contact_phone }}</p>
+
+<h4>订单明细：</h4>
+<table class="table">
+    <thead>
+        <tr><th>书名</th><th>单价</th><th>数量</th><th>小计</th></tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.title }}</td>
+            <td>¥{{ '%.2f'|format(item.unit_price) }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>¥{{ '%.2f'|format(item.subtotal) }}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+            <td colspan="3" class="text-right"><strong>总额：</strong></td>
+            <td>¥{{ '%.2f'|format(order.total_amount) }}</td>
+        </tr>
+    </tbody>
+</table>
+
+{% if order.status == '已创建' %}
+<p>请尽快付款，支付完成后我们会尽快发货。</p>
+{% endif %}
+
+{% endblock %}

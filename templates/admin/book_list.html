@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}后台管理 - 图书列表{% endblock %}
+{% block content %}
+<h2>图书管理</h2>
+<a href="{{ url_for('admin_book_create') }}" class="btn btn-primary mb-3">新增图书</a>
+
+{% if books %}
+<table class="table table-bordered table-hover">
+  <thead class="thead-light">
+    <tr>
+      <th>ID</th>
+      <th>书名</th>
+      <th>作者</th>
+      <th>分类</th>
+      <th>价格</th>
+      <th>库存</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for book in books %}
+    <tr>
+      <td>{{ book.id }}</td>
+      <td>{{ book.title }}</td>
+      <td>{{ book.author }}</td>
+      <td>{{ book.category or '—' }}</td>
+      <td>¥{{ '%.2f'|format(book.price) }}</td>
+      <td>{{ book.stock }}</td>
+      <td>
+        <a href="{{ url_for('admin_book_edit', book_id=book.id) }}" class="btn btn-sm btn-info">编辑</a>
+        <form method="post" action="{{ url_for('admin_book_delete', book_id=book.id) }}"
+              style="display:inline;" onsubmit="return confirm('确认删除该图书？');">
+          <button type="submit" class="btn btn-sm btn-danger">删除</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>暂时没有任何图书。</p>
+{% endif %}
+{% endblock %}

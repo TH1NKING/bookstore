@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}后台管理 - 统计报表{% endblock %}
+{% block content %}
+<h2>统计报表</h2>
+
+<h4>各分类销量</h4>
+{% if stats.category_sales %}
+<table class="table table-bordered table-hover">
+  <thead class="thead-light">
+    <tr>
+      <th>分类</th>
+      <th>已完成销售额 (¥)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in stats.category_sales %}
+    <tr>
+      <td>{{ row.category or '未分类' }}</td>
+      <td>¥{{ '%.2f'|format(row.sales) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>暂无销量数据。</p>
+{% endif %}
+
+<hr>
+
+<h4>库存预警（库存 ≤ 5）</h4>
+{% if stats.low_stock %}
+<table class="table table-bordered table-hover">
+  <thead class="thead-light">
+    <tr>
+      <th>图书ID</th>
+      <th>书名</th>
+      <th>当前库存</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for bk in stats.low_stock %}
+    <tr>
+      <td>{{ bk.id }}</td>
+      <td>{{ bk.title }}</td>
+      <td>{{ bk.stock }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>当前无库存不足的图书。</p>
+{% endif %}
+
+{% endblock %}

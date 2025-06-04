@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}订单确认{% endblock %}
+{% block content %}
+<h2>确认订单</h2>
+<form method="post" action="{{ url_for('checkout') }}">
+    <div class="form-group">
+        <label>收货地址</label>
+        <input type="text" name="address" class="form-control" required
+               value="{{ user_info.address or '' }}">
+    </div>
+    <div class="form-group">
+        <label>联系电话</label>
+        <input type="text" name="contact_phone" class="form-control" required
+               value="{{ user_info.phone or '' }}">
+    </div>
+
+    <h4>购物明细：</h4>
+    <table class="table">
+        <thead>
+            <tr><th>书名</th><th>单价</th><th>数量</th><th>小计</th></tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.title }}</td>
+                <td>¥{{ '%.2f'|format(item.price) }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>¥{{ '%.2f'|format(item.price * item.quantity) }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="3" class="text-right"><strong>总计：</strong></td>
+                <td>¥{{ '%.2f'|format(total) }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <button type="submit" class="btn btn-primary">提交订单</button>
+</form>
+{% endblock %}

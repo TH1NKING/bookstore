@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}我的购物车{% endblock %}
+{% block content %}
+<h2>我的购物车</h2>
+{% if items %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>书名</th><th>单价</th><th>数量</th><th>小计</th><th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.title }}</td>
+            <td>¥{{ '%.2f'|format(item.price) }}</td>
+            <td>
+                <form method="post" action="{{ url_for('update_cart', cart_id=item.cart_id) }}" style="display:inline;">
+                    <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:60px;">
+                    <button class="btn btn-sm btn-secondary" type="submit">更新</button>
+                </form>
+            </td>
+            <td>¥{{ '%.2f'|format(item.price * item.quantity) }}</td>
+            <td>
+                <form method="post" action="{{ url_for('update_cart', cart_id=item.cart_id) }}" style="display:inline;">
+                    <input type="hidden" name="quantity" value="0">
+                    <button class="btn btn-sm btn-danger" type="submit">删除</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        <tr>
+            <td colspan="3" class="text-right"><strong>总计：</strong></td>
+            <td colspan="2">¥{{ '%.2f'|format(total) }}</td>
+        </tr>
+    </tbody>
+</table>
+<a href="{{ url_for('checkout') }}" class="btn btn-success">去结算</a>
+{% else %}
+<p>购物车空空如也。</p>
+{% endif %}
+{% endblock %}

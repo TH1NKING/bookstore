@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% if action == 'create' %}
+  {% set page_title = '新增图书' %}
+{% else %}
+  {% set page_title = '编辑图书' %}
+{% endif %}
+{% block title %}后台管理 - {{ page_title }}{% endblock %}
+{% block content %}
+<h2>{{ page_title }}</h2>
+<form method="post" action="{{ action == 'create' 
+      and url_for('admin_book_create') 
+      or url_for('admin_book_edit', book_id=book.id) }}">
+  <div class="form-group">
+    <label>书名 <span class="text-danger">*</span></label>
+    <input type="text" name="title" class="form-control" required
+           value="{{ book and book.title or '' }}">
+  </div>
+  <div class="form-group">
+    <label>作者 <span class="text-danger">*</span></label>
+    <input type="text" name="author" class="form-control" required
+           value="{{ book and book.author or '' }}">
+  </div>
+  <div class="form-group">
+    <label>出版社</label>
+    <input type="text" name="publisher" class="form-control"
+           value="{{ book and book.publisher or '' }}">
+  </div>
+  <div class="form-group">
+    <label>出版日期</label>
+    <input type="date" name="publish_date" class="form-control"
+           value="{{ book and book.publish_date|string or '' }}">
+  </div>
+  <div class="form-group">
+    <label>价格 (元) <span class="text-danger">*</span></label>
+    <input type="number" step="0.01" min="0" name="price" class="form-control" required
+           value="{{ book and book.price or '' }}">
+  </div>
+  <div class="form-group">
+    <label>库存 <span class="text-danger">*</span></label>
+    <input type="number" min="0" name="stock" class="form-control" required
+           value="{{ book and book.stock or '' }}">
+  </div>
+  <div class="form-group">
+    <label>分类 <span class="text-danger">*</span></label>
+    <select name="category_id" class="form-control" required>
+      <option value="">-- 请选择分类 --</option>
+      {% for cat in categories %}
+        <option value="{{ cat.id }}"
+          {% if book and book.category_id == cat.id %} selected {% endif %}>
+          {{ cat.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="form-group">
+    <label>图书简介</label>
+    <textarea name="description" class="form-control" rows="3">{{ book and book.description or '' }}</textarea>
+  </div>
+  <div class="form-group">
+    <label>封面图片 URL</label>
+    <input type="text" name="cover_image" class="form-control"
+           value="{{ book and book.cover_image or '' }}">
+    <small class="form-text text-muted">可填写图片的相对路径或外网链接。</small>
+  </div>
+  <button type="submit" class="btn btn-success">{{ action == 'create' and '新增' or '更新' }}</button>
+  <a href="{{ url_for('admin_book_list') }}" class="btn btn-secondary">返回列表</a>
+</form>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}后台管理 - 仪表盘{% endblock %}
+{% block content %}
+<h2>管理仪表盘</h2>
+<div class="row">
+  <div class="col-md-3 mb-3">
+    <div class="card text-white bg-info">
+      <div class="card-body">
+        <h5 class="card-title">总会员数</h5>
+        <p class="card-text display-4">{{ stats.user_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 mb-3">
+    <div class="card text-white bg-success">
+      <div class="card-body">
+        <h5 class="card-title">总图书数</h5>
+        <p class="card-text display-4">{{ stats.book_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 mb-3">
+    <div class="card text-white bg-warning">
+      <div class="card-body">
+        <h5 class="card-title">总订单数</h5>
+        <p class="card-text display-4">{{ stats.order_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 mb-3">
+    <div class="card text-white bg-danger">
+      <div class="card-body">
+        <h5 class="card-title">总销售额</h5>
+        <p class="card-text display-4">¥{{ '%.2f'|format(stats.total_sales) }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<h3>快捷入口</h3>
+<div class="list-group">
+  <a href="{{ url_for('admin_book_list') }}" class="list-group-item list-group-item-action">图书管理</a>
+  <a href="{{ url_for('admin_user_list') }}" class="list-group-item list-group-item-action">会员管理</a>
+  <a href="{{ url_for('admin_order_list') }}" class="list-group-item list-group-item-action">订单管理</a>
+  <a href="{{ url_for('admin_stats') }}" class="list-group-item list-group-item-action">统计报表</a>
+</div>
+{% endblock %}

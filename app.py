@@ -289,7 +289,13 @@ def add_to_cart(book_id):
     """
     将指定图书添加到购物车（若已存在则数量 +1）
     """
-    quantity = int(request.form.get('quantity', 1))
+    try:
+        quantity = int(request.form.get('quantity', 1))
+        if quantity <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        flash('数量必须为正整数。', 'warning')
+        return redirect(url_for('book_detail', book_id=book_id))
     conn = get_db_connection()
     with conn.cursor() as cursor:
         # 检查该用户购物车中是否已有此书

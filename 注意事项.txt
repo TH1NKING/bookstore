@@ -1,0 +1,8 @@
+1.运行以下指令导入数据库
+mysql --default-character-set=utf8mb4 -u root -p bookstore < schema_utf8.sql
+
+2.更新flask-login至0.6.3版本，以防出现运行python app.py 或者 flask run 出现有关url_decode的问题。
+
+3.pip install cryptography，需要该依赖完成加密，mysql8.0以上默认使用cachin_sha2_password;
+
+4.

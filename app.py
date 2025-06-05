@@ -18,7 +18,7 @@ db_config = {
     'host': 'localhost',
     'port': 3306,
     'user': 'root',            # 请改为你的 MySQL 用户
-    'password': 'your_mysql_password',
+    'password': '20041224cbW',
     'database': 'bookstore',
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor

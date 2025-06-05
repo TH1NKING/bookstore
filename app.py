@@ -11,6 +11,20 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # 请换成随机字符串
 
+# 订单状态映射：数据库中存英文，界面显示中文
+STATUS_MAP = {
+    'created': '已创建',
+    'paid': '已支付',
+    'shipped': '已发货',
+    'completed': '已完成',
+    'canceled': '已取消'
+}
+
+@app.context_processor
+def inject_status_map():
+    """在所有模板中注入 status_map"""
+    return dict(status_map=STATUS_MAP)
+
 # ====================
 #  配置 MySQL 连接
 # ====================
@@ -370,7 +384,7 @@ def checkout():
                 # 1) 插入 orders 表
                 sql_order = """
                     INSERT INTO orders (user_id, total_amount, status, shipping_address, contact_phone, created_at)
-                    VALUES (%s, %s, '已创建', %s, %s, %s)
+                    VALUES (%s, %s, 'created', %s, %s, %s)
                 """
                 cursor.execute(sql_order, (current_user.id, total, shipping_address, contact_phone, datetime.now()))
                 order_id = cursor.lastrowid
@@ -483,7 +497,7 @@ def admin_dashboard():
         cursor.execute("SELECT COUNT(*) AS cnt FROM orders")
         stats['order_count'] = cursor.fetchone()['cnt']
 
-        cursor.execute("SELECT IFNULL(SUM(total_amount), 0) AS total_sales FROM orders WHERE status<>'已取消'")
+        cursor.execute("SELECT IFNULL(SUM(total_amount), 0) AS total_sales FROM orders WHERE status<>'canceled'")
         stats['total_sales'] = cursor.fetchone()['total_sales']
     conn.close()
     return render_template('admin/dashboard.html', stats=stats)
@@ -760,7 +774,7 @@ def admin_stats():
             FROM categories c
             LEFT JOIN books b ON c.id=b.category_id
             LEFT JOIN order_items oi ON b.id=oi.book_id
-            LEFT JOIN orders o ON oi.order_id=o.id AND o.status<>'已取消'
+            LEFT JOIN orders o ON oi.order_id=o.id AND o.status<>'canceled'
             GROUP BY c.id
             ORDER BY sales DESC;
         """)

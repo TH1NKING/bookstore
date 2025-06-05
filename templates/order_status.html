@@ -2,7 +2,7 @@
 {% block title %}订单详情{% endblock %}
 {% block content %}
 <h2>订单 #{{ order.id }} 详情</h2>
-<p>订单状态：<strong>{{ order.status }}</strong></p>
+<p>订单状态：<strong>{{ status_map[order.status] }}</strong></p>
 <p>下单时间：{{ order.created_at }}</p>
 <p>收货地址：{{ order.shipping_address }}</p>
 <p>联系电话：{{ order.contact_phone }}</p>
@@ -28,7 +28,7 @@
     </tbody>
 </table>
 
-{% if order.status == '已创建' %}
+{% if order.status == 'created' %}
 <p>请尽快付款，支付完成后我们会尽快发货。</p>
 {% endif %}
 

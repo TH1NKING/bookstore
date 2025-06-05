@@ -290,11 +290,22 @@ def book_detail(book_id):
     """
     查看单本图书的详细信息
     """
-    book = get_book_by_id(book_id)
+    conn = get_db_connection()
+    with conn.cursor() as cursor:
+        sql = """
+            SELECT b.*, c.name AS category
+            FROM books b
+            LEFT JOIN categories c ON b.category_id = c.id
+            WHERE b.id = %s
+        """
+        cursor.execute(sql, (book_id,))
+        book = cursor.fetchone()
+    conn.close()
+    
     if not book:
         flash('未找到该图书信息。', 'warning')
         return redirect(url_for('search'))
-    return render_template('book_list.html', books=[book])  # 可复用同一个模板，仅展示一行
+    return render_template('book_detail.html', book=book)
 
 
 @app.route('/add_to_cart/<int:book_id>', methods=['POST'])
@@ -370,8 +381,13 @@ def checkout():
     """
     if request.method == 'POST':
         # 获取地址和电话（允许用户下单时改写或使用个人资料中的信息）
-        shipping_address = request.form.get('address').strip()
-        contact_phone = request.form.get('contact_phone').strip()
+        shipping_address = request.form.get('address', '').strip()
+        contact_phone = request.form.get('contact_phone', '').strip()
+        
+        if not shipping_address or not contact_phone:
+            flash('请填写收货地址和联系电话。', 'warning')
+            return redirect(url_for('checkout'))
+            
         # 计算总金额
         total = calculate_cart_total(current_user.id)
         if total <= 0:
@@ -383,11 +399,24 @@ def checkout():
             with conn.cursor() as cursor:
                 # 1) 插入 orders 表
                 sql_order = """
-                    INSERT INTO orders (user_id, total_amount, status, shipping_address, contact_phone, created_at)
-                    VALUES (%s, %s, 'created', %s, %s, %s)
+                    INSERT INTO orders 
+                    (user_id, total_amount, status, shipping_address, contact_phone, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                 """
-                cursor.execute(sql_order, (current_user.id, total, shipping_address, contact_phone, datetime.now()))
-                order_id = cursor.lastrowid
+                order_status = 'created'  # 使用变量存储状态值
+                try:
+                    cursor.execute(sql_order, (
+                        current_user.id, 
+                        total, 
+                        order_status,  # 使用变量
+                        shipping_address, 
+                        contact_phone, 
+                        datetime.now()
+                    ))
+                    order_id = cursor.lastrowid
+                except Exception as e:
+                    print(f"订单创建失败: {str(e)}")  # 添加调试信息
+                    raise
 
                 # 2) 插入 order_items 表，并减少库存
                 items = get_cart_items(current_user.id)
@@ -411,7 +440,8 @@ def checkout():
                 conn.commit()
         except Exception as e:
             conn.rollback()
-            flash('下单失败：' + str(e), 'danger')
+            print(f"下单失败: {str(e)}")  # 添加调试信息
+            flash(f'下单失败：{str(e)}', 'danger')
             return redirect(url_for('view_cart'))
         finally:
             conn.close()
@@ -497,7 +527,7 @@ def admin_dashboard():
         cursor.execute("SELECT COUNT(*) AS cnt FROM orders")
         stats['order_count'] = cursor.fetchone()['cnt']
 
-        cursor.execute("SELECT IFNULL(SUM(total_amount), 0) AS total_sales FROM orders WHERE status<>'canceled'")
+        cursor.execute("SELECT IFNULL(SUM(total_amount), 0) AS total_sales FROM orders WHERE status='completed'")
         stats['total_sales'] = cursor.fetchone()['total_sales']
     conn.close()
     return render_template('admin/dashboard.html', stats=stats)
@@ -510,7 +540,7 @@ def admin_dashboard():
 @admin_required
 def admin_book_list():
     """
-    后台“图书列表”页：罗列所有图书
+    后台"图书列表"页：罗列所有图书
     """
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -530,7 +560,7 @@ def admin_book_list():
 @admin_required
 def admin_book_create():
     """
-    后台“新增图书”页
+    后台"新增图书"页
     """
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -574,7 +604,7 @@ def admin_book_create():
 @admin_required
 def admin_book_edit(book_id):
     """
-    后台“编辑图书”页
+    后台"编辑图书"页
     """
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -626,7 +656,7 @@ def admin_book_edit(book_id):
 @admin_required
 def admin_book_delete(book_id):
     """
-    后台“删除图书”操作
+    后台"删除图书"操作
     """
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -644,7 +674,7 @@ def admin_book_delete(book_id):
 @admin_required
 def admin_user_list():
     """
-    后台“会员列表”页：可以查看所有会员状态，并支持修改/删除等操作
+    后台"会员列表"页：可以查看所有会员状态，并支持修改/删除等操作
     """
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -701,7 +731,7 @@ def admin_user_delete(user_id):
 @admin_required
 def admin_order_list():
     """
-    后台“订单列表”页：可查看订单状态、修改配送状态、删除订单等
+    后台"订单列表"页：可查看订单状态、修改配送状态、删除订单等
     """
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -747,10 +777,41 @@ def admin_order_update_status(order_id):
     """
     new_status = request.form.get('status')
     conn = get_db_connection()
-    with conn.cursor() as cursor:
-        cursor.execute("UPDATE orders SET status=%s, updated_at=%s WHERE id=%s", (new_status, datetime.now(), order_id))
-        conn.commit()
-    conn.close()
+    try:
+        with conn.cursor() as cursor:
+            # 如果订单状态改为已取消，需要返还库存
+            if new_status == 'canceled':
+                # 1. 获取订单中的所有商品
+                cursor.execute("""
+                    SELECT book_id, quantity 
+                    FROM order_items 
+                    WHERE order_id = %s
+                """, (order_id,))
+                items = cursor.fetchall()
+                
+                # 2. 返还库存
+                for item in items:
+                    cursor.execute("""
+                        UPDATE books 
+                        SET stock = stock + %s 
+                        WHERE id = %s
+                    """, (item['quantity'], item['book_id']))
+            
+            # 3. 更新订单状态
+            cursor.execute("""
+                UPDATE orders 
+                SET status = %s, 
+                    updated_at = %s 
+                WHERE id = %s
+            """, (new_status, datetime.now(), order_id))
+            
+            conn.commit()
+    except Exception as e:
+        conn.rollback()
+        flash(f'更新订单状态失败：{str(e)}', 'danger')
+    finally:
+        conn.close()
+        
     flash('订单状态已更新。', 'success')
     return redirect(url_for('admin_order_list'))
 
@@ -762,20 +823,23 @@ def admin_order_update_status(order_id):
 @admin_required
 def admin_stats():
     """
-    后台“统计报表”页：可以做销售统计、库存统计、会员统计等
-    这里以 “各分类销量” 举例
+    后台"统计报表"页：可以做销售统计、库存统计、会员统计等
+     这里以 "各分类销量" 举例
     """
     conn = get_db_connection()
     stats = {}
     with conn.cursor() as cursor:
         # 各分类已完成订单总销售额
         cursor.execute("""
-            SELECT c.name AS category, IFNULL(SUM(oi.subtotal), 0) AS sales
+            SELECT 
+                c.name AS category,
+                IFNULL(SUM(oi.subtotal), 0) AS sales
             FROM categories c
-            LEFT JOIN books b ON c.id=b.category_id
-            LEFT JOIN order_items oi ON b.id=oi.book_id
-            LEFT JOIN orders o ON oi.order_id=o.id AND o.status<>'canceled'
-            GROUP BY c.id
+            LEFT JOIN books b ON c.id = b.category_id
+            LEFT JOIN order_items oi ON b.id = oi.book_id
+            LEFT JOIN orders o ON oi.order_id = o.id
+            WHERE o.status = 'completed' OR o.status IS NULL
+            GROUP BY c.id, c.name
             ORDER BY sales DESC;
         """)
         stats['category_sales'] = cursor.fetchall()

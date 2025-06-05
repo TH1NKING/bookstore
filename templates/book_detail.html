@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}{{ book.title }} - 图书详情{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        {% if book.cover_image %}
+        <img src="{{ book.cover_image }}" class="img-fluid" alt="{{ book.title }}封面">
+        {% else %}
+        <div class="bg-light p-5 text-center">
+            <i class="fas fa-book fa-5x text-muted"></i>
+            <p class="mt-2">暂无封面图片</p>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-md-8">
+        <h2>{{ book.title }}</h2>
+        <p class="text-muted">作者：{{ book.author }}</p>
+        <p class="text-muted">出版社：{{ book.publisher or '未知' }}</p>
+        <p class="text-muted">出版日期：{{ book.publish_date or '未知' }}</p>
+        <p class="text-muted">分类：{{ book.category or '未分类' }}</p>
+        <hr>
+        <h4 class="text-danger">¥{{ '%.2f'|format(book.price) }}</h4>
+        <p>库存：{{ book.stock }} 本</p>
+        {% if book.description %}
+        <div class="mt-4">
+            <h5>图书简介</h5>
+            <p>{{ book.description }}</p>
+        </div>
+        {% endif %}
+        <div class="mt-4">
+            {% if current_user.is_authenticated %}
+            <form method="post" action="{{ url_for('add_to_cart', book_id=book.id) }}" class="form-inline">
+                <input type="number" name="quantity" value="1" min="1" max="{{ book.stock }}" class="form-control mr-2" style="width: 80px;">
+                <button type="submit" class="btn btn-primary">加入购物车</button>
+            </form>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-secondary">登录后购买</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

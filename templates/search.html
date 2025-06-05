@@ -1,64 +1,87 @@
 {% extends 'base.html' %}
-{% block title %}首页 - 搜索图书{% endblock %}
+{% block title %}搜索图书{% endblock %}
 {% block content %}
-<div class="row">
-  <div class="col-md-3">
-    <!-- 可以在这里放置分类列表/筛选条件等，示例略 -->
-    <h5>图书分类</h5>
-    <ul class="list-group">
-      <li class="list-group-item"><a href="{{ url_for('search') }}">全部</a></li>
-      {% for cat in [] %}
-        <!-- 若需要动态分类，可在后端传入 categories 列表，这里仅占位 -->
-        <li class="list-group-item"><a href="{{ url_for('search', keyword=cat.name) }}">{{ cat.name }}</a></li>
-      {% endfor %}
-    </ul>
-  </div>
-  <div class="col-md-9">
+<div class="container mt-4">
     <h2>搜索图书</h2>
-    <form class="form-inline mb-3" method="get" action="{{ url_for('search') }}">
-      <input type="text" name="keyword" class="form-control mr-2" placeholder="请输入书名或作者"
-             value="{{ keyword or '' }}">
-      <button type="submit" class="btn btn-primary">搜索</button>
-    </form>
+    
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">图书分类</h5>
+                    <form method="get" action="{{ url_for('search') }}" id="categoryForm">
+                        <div class="form-group">
+                            <select name="category_id" class="form-control" onchange="this.form.submit()">
+                                <option value="">全部分类</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat.id }}" {% if selected_category == cat.id %}selected{% endif %}>
+                                    {{ cat.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <form method="get" action="{{ url_for('search') }}" class="mb-4">
+                <div class="input-group">
+                    <input type="text" name="keyword" class="form-control" placeholder="请输入书名或作者" 
+                           value="{{ keyword or '' }}">
+                    {% if selected_category %}
+                    <input type="hidden" name="category_id" value="{{ selected_category }}">
+                    {% endif %}
+                    <div class="input-group-append">
+                        <button type="submit" class="btn btn-primary">搜索</button>
+                    </div>
+                </div>
+            </form>
 
-    {% if books %}
-      <table class="table table-bordered table-hover">
-        <thead class="thead-light">
-          <tr>
-            <th>书名</th>
-            <th>作者</th>
-            <th>分类</th>
-            <th>价格</th>
-            <th>库存</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for book in books %}
-          <tr>
-            <td>{{ book.title }}</td>
-            <td>{{ book.author }}</td>
-            <td>{{ book.category or '—' }}</td>
-            <td>¥{{ '%.2f'|format(book.price) }}</td>
-            <td>{{ book.stock }}</td>
-            <td>
-              <a href="{{ url_for('book_detail', book_id=book.id) }}" class="btn btn-sm btn-info">详情</a>
-              {% if current_user.is_authenticated %}
-              <form method="post" action="{{ url_for('add_to_cart', book_id=book.id) }}" style="display:inline;">
-                <input type="hidden" name="quantity" value="1">
-                <button type="submit" class="btn btn-sm btn-success">加入购物车</button>
-              </form>
-              {% else %}
-              <button class="btn btn-sm btn-secondary" disabled>登入后购买</button>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p>暂无符合条件的图书。</p>
-    {% endif %}
-  </div>
+            {% if books %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>书名</th>
+                            <th>作者</th>
+                            <th>分类</th>
+                            <th>价格</th>
+                            <th>库存</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for book in books %}
+                        <tr>
+                            <td>{{ book.title }}</td>
+                            <td>{{ book.author }}</td>
+                            <td>{{ book.category or '—' }}</td>
+                            <td>¥{{ "%.2f"|format(book.price) }}</td>
+                            <td>{{ book.stock }}</td>
+                            <td>
+                                <a href="{{ url_for('book_detail', book_id=book.id) }}" class="btn btn-sm btn-info">详情</a>
+                                {% if current_user.is_authenticated %}
+                                <form method="post" action="{{ url_for('add_to_cart', book_id=book.id) }}" style="display:inline;">
+                                    <input type="hidden" name="quantity" value="1">
+                                    <button type="submit" class="btn btn-sm btn-success">加入购物车</button>
+                                </form>
+                                {% else %}
+                                <button class="btn btn-sm btn-secondary" disabled>登入后购买</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                没有找到符合条件的图书。
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 {% endblock %}

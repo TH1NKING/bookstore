@@ -12,6 +12,7 @@
         <ul class="navbar-nav mr-auto">
             {% if current_user.is_authenticated %}
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('profile') }}">个人中心</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('my_orders') }}">我的订单</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('view_cart') }}">购物车</a></li>
                 {% if current_user.is_admin == 1 %}
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_dashboard') }}">后台管理</a></li>

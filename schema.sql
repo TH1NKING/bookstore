@@ -4,7 +4,7 @@
 CREATE DATABASE IF NOT EXISTS bookstore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE bookstore;
 
--- 2. 创建“用户”表（会员信息）
+-- 2. 创建"用户"表（会员信息）
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,                -- 会员ID
     username VARCHAR(50) NOT NULL UNIQUE,             -- 用户名（唯一）
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- 3. 创建“图书分类”表
+-- 3. 创建"图书分类"表
 CREATE TABLE IF NOT EXISTS categories (
     id INT AUTO_INCREMENT PRIMARY KEY,                -- 分类ID
     name VARCHAR(100) NOT NULL UNIQUE,                -- 分类名称
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS categories (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- 4. 创建“图书”表
+-- 4. 创建"图书"表
 CREATE TABLE IF NOT EXISTS books (
     id INT AUTO_INCREMENT PRIMARY KEY,                 -- 图书ID
     title VARCHAR(200) NOT NULL,                       -- 书名
@@ -44,8 +44,8 @@ CREATE TABLE IF NOT EXISTS books (
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
--- 5. 创建“购物车”表
--- 注意：这里假设每个用户有一个“临时购物车”，也可以改为每次下单临时存储
+-- 5. 创建"购物车"表
+-- 注意：这里假设每个用户有一个"临时购物车"，也可以改为每次下单临时存储
 CREATE TABLE IF NOT EXISTS cart_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,                               -- 会员ID
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS cart_items (
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
--- 6. 创建“订单”表
+-- 6. 创建"订单"表
 CREATE TABLE IF NOT EXISTS orders (
     id INT AUTO_INCREMENT PRIMARY KEY,                  -- 订单ID
     user_id INT NOT NULL,                               -- 会员ID
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS orders (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
--- 7. 创建“订单明细”表
+-- 7. 创建"订单明细"表
 CREATE TABLE IF NOT EXISTS order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,                              -- 关联订单ID
@@ -82,9 +82,21 @@ CREATE TABLE IF NOT EXISTS order_items (
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
--- 8. 初始化一个管理员账号（密码需自行哈希后填入）
--- 假设我们使用明文“admin123”，实际部署时请使用 bcrypt / sha256 等方式生成哈希
+-- 8. 创建"订单评价"表
+CREATE TABLE IF NOT EXISTS order_reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,                              -- 关联订单ID
+    user_id INT NOT NULL,                               -- 评价用户ID
+    rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5), -- 评分（1-5星）
+    comment TEXT,                                       -- 评价内容
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE KEY uk_order_user (order_id, user_id)        -- 每个订单每个用户只能评价一次
+) ENGINE=InnoDB;
+
+-- 9. 初始化一个管理员账号（使用明文密码）
 INSERT INTO users (username, password_hash, email, full_name, is_admin)
-VALUES ('admin', SHA2('admin123', 256), 'admin@example.com', '超级管理员', 1)
-ON DUPLICATE KEY UPDATE password_hash = SHA2('admin123', 256);
+VALUES ('admin', 'admin123', 'admin@example.com', '超级管理员', 1)
+ON DUPLICATE KEY UPDATE password_hash = 'admin123';
 

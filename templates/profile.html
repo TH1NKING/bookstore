@@ -1,35 +1,57 @@
 {% extends 'base.html' %}
 {% block title %}个人中心{% endblock %}
 {% block content %}
-<h2>个人信息</h2>
-<form method="post" action="{{ url_for('profile') }}">
-  <div class="form-group row">
-    <label class="col-sm-2 col-form-label">用户名：</label>
-    <div class="col-sm-10">
-      <input type="text" class="form-control-plaintext" readonly value="{{ user.username }}">
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">个人信息</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('profile') }}">
+                        <div class="form-group row">
+                            <label class="col-sm-2 col-form-label">用户名：</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control-plaintext" readonly value="{{ user.username }}">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-2 col-form-label">邮箱：</label>
+                            <div class="col-sm-10">
+                                <input type="email" class="form-control-plaintext" readonly value="{{ user.email }}">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>真实姓名</label>
+                            <input type="text" name="full_name" class="form-control"
+                                   value="{{ user.full_name or '' }}" placeholder="请输入真实姓名">
+                        </div>
+                        <div class="form-group">
+                            <label>联系电话</label>
+                            <input type="text" name="phone" class="form-control"
+                                   value="{{ user.phone or '' }}" placeholder="请输入联系电话">
+                        </div>
+                        <div class="form-group">
+                            <label>收货地址</label>
+                            <textarea name="address" class="form-control" rows="2"
+                                      placeholder="请输入收货地址">{{ user.address or '' }}</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">保存修改</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">账号安全</h4>
+                </div>
+                <div class="card-body">
+                    <a href="{{ url_for('change_password') }}" class="btn btn-warning btn-block">修改密码</a>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="form-group row">
-    <label class="col-sm-2 col-form-label">邮箱：</label>
-    <div class="col-sm-10">
-      <input type="email" class="form-control-plaintext" readonly value="{{ user.email }}">
-    </div>
-  </div>
-  <div class="form-group">
-    <label>真实姓名</label>
-    <input type="text" name="full_name" class="form-control"
-           value="{{ user.full_name or '' }}" placeholder="请输入真实姓名">
-  </div>
-  <div class="form-group">
-    <label>联系电话</label>
-    <input type="text" name="phone" class="form-control"
-           value="{{ user.phone or '' }}" placeholder="请输入联系电话">
-  </div>
-  <div class="form-group">
-    <label>收货地址</label>
-    <textarea name="address" class="form-control" rows="2"
-              placeholder="请输入收货地址">{{ user.address or '' }}</textarea>
-  </div>
-  <button type="submit" class="btn btn-primary">保存修改</button>
-</form>
+</div>
 {% endblock %}

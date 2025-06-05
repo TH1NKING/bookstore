@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}我的订单{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>我的订单</h2>
+    {% if orders %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="thead-light">
+                <tr>
+                    <th>订单号</th>
+                    <th>下单时间</th>
+                    <th>订单状态</th>
+                    <th>总金额</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>{{ order.id }}</td>
+                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td>{{ status_map[order.status] }}</td>
+                    <td>¥{{ "%.2f"|format(order.total_amount) }}</td>
+                    <td>
+                        <a href="{{ url_for('order_status', order_id=order.id) }}" class="btn btn-sm btn-info">查看详情</a>
+                        {% if order.status == 'completed' and not order.has_review %}
+                        <a href="{{ url_for('order_status', order_id=order.id) }}" class="btn btn-sm btn-success">去评价</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        您还没有任何订单。
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

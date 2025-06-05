@@ -92,33 +92,41 @@ def load_user(user_id):
 # ====================
 #  辅助函数
 # ====================
-def query_all_books(keyword=None):
+def query_all_books(keyword=None, category_id=None):
     """
-    查询所有图书，可根据关键字（书名、作者）模糊查询
+    查询所有图书，可根据关键字（书名、作者）和类别进行查询
     """
     conn = get_db_connection()
     with conn.cursor() as cursor:
+        # 获取所有分类
+        cursor.execute("SELECT id, name FROM categories ORDER BY name")
+        categories = cursor.fetchall()
+        
+        # 构建查询条件
+        conditions = []
+        params = []
         if keyword:
             like_kw = f"%{keyword}%"
-            sql = """
-                SELECT b.id, b.title, b.author, b.price, b.stock, c.name AS category
-                FROM books b
-                LEFT JOIN categories c ON b.category_id=c.id
-                WHERE b.title LIKE %s OR b.author LIKE %s
-                ORDER BY b.title;
-            """
-            cursor.execute(sql, (like_kw, like_kw))
-        else:
-            sql = """
-                SELECT b.id, b.title, b.author, b.price, b.stock, c.name AS category
-                FROM books b
-                LEFT JOIN categories c ON b.category_id=c.id
-                ORDER BY b.title;
-            """
-            cursor.execute(sql)
-        results = cursor.fetchall()
+            conditions.append("(b.title LIKE %s OR b.author LIKE %s)")
+            params.extend([like_kw, like_kw])
+        if category_id:
+            conditions.append("b.category_id = %s")
+            params.append(category_id)
+            
+        # 构建SQL查询
+        sql = """
+            SELECT b.id, b.title, b.author, b.price, b.stock, c.name AS category, c.id AS category_id
+            FROM books b
+            LEFT JOIN categories c ON b.category_id=c.id
+        """
+        if conditions:
+            sql += " WHERE " + " AND ".join(conditions)
+        sql += " ORDER BY b.title"
+        
+        cursor.execute(sql, params)
+        books = cursor.fetchall()
     conn.close()
-    return results
+    return books, categories
 
 
 def get_book_by_id(book_id):
@@ -165,10 +173,10 @@ def calculate_cart_total(user_id):
 @app.route('/')
 def index():
     """
-    首页：显示最近上架的几本图书（示例）
+    首页：显示所有图书
     """
-    books = query_all_books()
-    return render_template('search.html', books=books)
+    books, categories = query_all_books()
+    return render_template('search.html', books=books, categories=categories)
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -278,11 +286,13 @@ def profile():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     """
-    查询图书：输入关键字，展示结果
+    查询图书：输入关键字和选择类别，展示结果
     """
     keyword = request.form.get('keyword', '').strip() if request.method == 'POST' else request.args.get('keyword', '').strip()
-    books = query_all_books(keyword) if keyword else query_all_books()
-    return render_template('book_list.html', books=books, keyword=keyword)
+    category_id = request.form.get('category_id', type=int) if request.method == 'POST' else request.args.get('category_id', type=int)
+    
+    books, categories = query_all_books(keyword, category_id)
+    return render_template('search.html', books=books, categories=categories, keyword=keyword, selected_category=category_id)
 
 
 @app.route('/book/<int:book_id>')
@@ -397,7 +407,16 @@ def checkout():
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                # 1) 插入 orders 表
+                # 1. 检查库存是否充足
+                items = get_cart_items(current_user.id)
+                for item in items:
+                    cursor.execute("SELECT stock FROM books WHERE id = %s", (item['book_id'],))
+                    book = cursor.fetchone()
+                    if not book or book['stock'] < item['quantity']:
+                        flash(f'图书《{item["title"]}》库存不足，当前库存：{book["stock"] if book else 0}，需要：{item["quantity"]}', 'warning')
+                        return redirect(url_for('view_cart'))
+
+                # 2. 插入 orders 表
                 sql_order = """
                     INSERT INTO orders 
                     (user_id, total_amount, status, shipping_address, contact_phone, created_at)
@@ -418,8 +437,7 @@ def checkout():
                     print(f"订单创建失败: {str(e)}")  # 添加调试信息
                     raise
 
-                # 2) 插入 order_items 表，并减少库存
-                items = get_cart_items(current_user.id)
+                # 3. 插入 order_items 表，并减少库存
                 for item in items:
                     unit_price = item['price']
                     qty = item['quantity']
@@ -432,10 +450,10 @@ def checkout():
                     cursor.execute(sql_item, (order_id, item['book_id'], qty, unit_price, subtotal))
 
                     # 更新库存：books.stock -= quantity
-                    sql_update_stock = "UPDATE books SET stock = stock - %s WHERE id = %s AND stock >= %s"
-                    cursor.execute(sql_update_stock, (qty, item['book_id'], qty))
+                    sql_update_stock = "UPDATE books SET stock = stock - %s WHERE id = %s"
+                    cursor.execute(sql_update_stock, (qty, item['book_id']))
 
-                # 3) 清空当前用户购物车
+                # 4. 清空当前用户购物车
                 cursor.execute("DELETE FROM cart_items WHERE user_id=%s", (current_user.id,))
                 conn.commit()
         except Exception as e:
@@ -480,12 +498,143 @@ def order_status(order_id):
             WHERE oi.order_id=%s
         """, (order_id,))
         items = cursor.fetchall()
+        
+        # 获取订单评价（如果存在）
+        cursor.execute("""
+            SELECT rating, comment, created_at
+            FROM order_reviews
+            WHERE order_id = %s AND user_id = %s
+        """, (order_id, current_user.id))
+        review = cursor.fetchone()
     conn.close()
+    
     if not order:
         flash('未找到该订单或无权限查看。', 'warning')
         return redirect(url_for('index'))
 
-    return render_template('order_status.html', order=order, items=items)
+    return render_template('order_status.html', order=order, items=items, review=review)
+
+
+@app.route('/order_review/<int:order_id>', methods=['POST'])
+@login_required
+def order_review(order_id):
+    """
+    提交订单评价
+    """
+    # 检查订单是否存在且属于当前用户
+    conn = get_db_connection()
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            SELECT status 
+            FROM orders 
+            WHERE id = %s AND user_id = %s
+        """, (order_id, current_user.id))
+        order = cursor.fetchone()
+        
+        if not order:
+            flash('未找到该订单或无权限评价。', 'warning')
+            return redirect(url_for('index'))
+            
+        if order['status'] != 'completed':
+            flash('只能评价已完成的订单。', 'warning')
+            return redirect(url_for('order_status', order_id=order_id))
+            
+        # 检查是否已经评价过
+        cursor.execute("""
+            SELECT id 
+            FROM order_reviews 
+            WHERE order_id = %s AND user_id = %s
+        """, (order_id, current_user.id))
+        existing_review = cursor.fetchone()
+        
+        if existing_review:
+            flash('您已经评价过该订单。', 'warning')
+            return redirect(url_for('order_status', order_id=order_id))
+            
+        # 获取评价数据
+        rating = int(request.form.get('rating', 0))
+        comment = request.form.get('comment', '').strip()
+        
+        if not 1 <= rating <= 5:
+            flash('评分必须在1-5之间。', 'warning')
+            return redirect(url_for('order_status', order_id=order_id))
+            
+        # 插入评价
+        cursor.execute("""
+            INSERT INTO order_reviews (order_id, user_id, rating, comment)
+            VALUES (%s, %s, %s, %s)
+        """, (order_id, current_user.id, rating, comment))
+        conn.commit()
+        
+    conn.close()
+    flash('评价提交成功！', 'success')
+    return redirect(url_for('order_status', order_id=order_id))
+
+
+@app.route('/my_orders')
+@login_required
+def my_orders():
+    """
+    查看当前用户的所有订单
+    """
+    conn = get_db_connection()
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            SELECT o.*, 
+                   (SELECT COUNT(*) FROM order_reviews WHERE order_id = o.id) as has_review
+            FROM orders o
+            WHERE o.user_id = %s
+            ORDER BY o.created_at DESC
+        """, (current_user.id,))
+        orders = cursor.fetchall()
+    conn.close()
+    return render_template('my_orders.html', orders=orders)
+
+
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """
+    修改密码
+    """
+    if request.method == 'POST':
+        old_password = request.form.get('old_password', '').strip()
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        # 验证输入
+        if not old_password or not new_password or not confirm_password:
+            flash('请填写所有密码字段。', 'warning')
+            return redirect(url_for('change_password'))
+            
+        if new_password != confirm_password:
+            flash('两次输入的新密码不一致。', 'warning')
+            return redirect(url_for('change_password'))
+            
+        # 验证旧密码
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT password_hash FROM users WHERE id=%s", (current_user.id,))
+            user = cursor.fetchone()
+            
+            if not user or user['password_hash'] != old_password:
+                flash('旧密码错误。', 'danger')
+                return redirect(url_for('change_password'))
+                
+            # 更新密码
+            cursor.execute("""
+                UPDATE users 
+                SET password_hash = %s,
+                    updated_at = %s
+                WHERE id = %s
+            """, (new_password, datetime.now(), current_user.id))
+            conn.commit()
+        conn.close()
+        
+        flash('密码修改成功！', 'success')
+        return redirect(url_for('profile'))
+        
+    return render_template('change_password.html')
 
 
 # ====================

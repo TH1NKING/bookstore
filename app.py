@@ -2,7 +2,7 @@
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import pymysql
-from werkzeug.security import generate_password_hash, check_password_hash
+# 明文存储密码，直接对比，无需哈希
 from flask_login import (
     LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 )
@@ -176,8 +176,8 @@ def register():
             if exists:
                 flash('用户名或邮箱已被占用，请更换后重试。', 'danger')
                 return redirect(url_for('register'))
-            # 哈希密码
-            pwd_hash = generate_password_hash(raw_pwd)
+            # 直接保存明文密码（仅限教学示例，生产环境请使用哈希）
+            pwd_hash = raw_pwd
             sql = """
                 INSERT INTO users (username, password_hash, email)
                 VALUES (%s, %s, %s)
@@ -208,8 +208,8 @@ def login():
             flash('用户名不存在。', 'danger')
             return redirect(url_for('login'))
 
-        # 验证密码
-        if not check_password_hash(user_row['password_hash'], raw_pwd):
+        # 验证密码（明文比对）
+        if user_row['password_hash'] != raw_pwd:
             flash('密码错误。', 'danger')
             return redirect(url_for('login'))
 

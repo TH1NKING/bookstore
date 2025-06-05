@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS orders (
     id INT AUTO_INCREMENT PRIMARY KEY,                  -- 订单ID
     user_id INT NOT NULL,                               -- 会员ID
     total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,   -- 订单总金额
-    status ENUM('已创建','已支付','已发货','已完成','已取消') NOT NULL DEFAULT '已创建',
+    status ENUM('created','paid','shipped','completed','canceled') NOT NULL DEFAULT 'created',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     shipping_address VARCHAR(255) NOT NULL,             -- 收货地址（下单时拷贝用户地址）
